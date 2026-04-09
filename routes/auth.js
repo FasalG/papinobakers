@@ -3,23 +3,28 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
-// Helper to check credentials (In a real app, use the Admin model)
+const Admin = require('../models/Admin');
+
+// Login Route
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    console.log('Login attempt:', { username, password });
-    console.log('Expected:', { 
-        user: process.env.ADMIN_USERNAME, 
-        pass: process.env.ADMIN_PASSWORD 
-    });
     
-    if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
-        console.log('Login successful');
-        const token = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1d' });
-        return res.json({ token });
+    try {
+        const admin = await Admin.findOne({ username });
+        if (!admin) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        const isMatch = await bcrypt.compare(password, admin.password);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        const token = jwt.sign({ id: admin._id, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        res.json({ token });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error during login' });
     }
-    
-    console.log('Login failed: Invalid credentials');
-    res.status(401).json({ message: 'Invalid credentials' });
 });
 
 module.exports = router;
