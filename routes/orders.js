@@ -34,6 +34,16 @@ router.get('/all', async (req, res) => {
     }
 });
 
+// Clear Completed Orders History (Admin)
+router.delete('/clear-all', async (req, res) => {
+    try {
+        await Order.deleteMany({ status: 'completed' });
+        res.status(200).json({ message: 'Order history cleared successfully' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // Update Order Status (Admin)
 router.patch('/:id/status', async (req, res) => {
     try {
@@ -45,16 +55,6 @@ router.patch('/:id/status', async (req, res) => {
         res.json(order);
     } catch (err) {
         res.status(400).json({ message: err.message });
-    }
-});
-
-// Clear Completed Orders History (Admin)
-router.delete('/history', async (req, res) => {
-    try {
-        await Order.deleteMany({ status: 'completed' });
-        res.status(200).json({ message: 'Order history cleared successfully' });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
     }
 });
 
