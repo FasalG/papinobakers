@@ -23,6 +23,14 @@ router.post('/generate', async (req, res) => {
 // Get all links (Admin)
 router.get('/all', async (req, res) => {
     try {
+        // Cleanup expired or inactive links
+        await Link.deleteMany({
+            $or: [
+                { expiresAt: { $lt: new Date() } },
+                { isActive: false }
+            ]
+        });
+        
         const links = await Link.find().sort('-createdAt');
         res.json(links);
     } catch (err) {
