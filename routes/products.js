@@ -5,8 +5,23 @@ const Product = require('../models/Product');
 const multer = require('multer');
 const path = require('path');
 
-const { storage } = require('../config/cloudinary');
+const { storage, cloudinary } = require('../config/cloudinary');
 const upload = multer({ storage });
+
+const extractPublicId = (url) => {
+    if (!url) return null;
+    const parts = url.split('/');
+    const uploadIndex = parts.indexOf('upload');
+    if (uploadIndex === -1) return null;
+
+    let publicIdParts = parts.slice(uploadIndex + 1);
+    if (publicIdParts[0].startsWith('v') && /^\d+$/.test(publicIdParts[0].substring(1))) {
+        publicIdParts = publicIdParts.slice(1);
+    }
+
+    const publicIdWithExtension = publicIdParts.join('/');
+    return publicIdWithExtension.split('.')[0];
+};
 
 router.post('/upload', upload.single('image'), (req, res) => {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
@@ -72,6 +87,13 @@ router.delete('/categories/:id', async (req, res) => {
 // DELETE PRODUCT
 router.delete('/products/:id', async (req, res) => {
     try {
+        const product = await Product.findById(req.params.id);
+        if (product && product.image) {
+            const publicId = extractPublicId(product.image);
+            if (publicId) {
+                await cloudinary.uploader.destroy(publicId);
+            }
+        }
         await Product.findByIdAndDelete(req.params.id);
         res.json({ message: 'Product deleted' });
     } catch (err) {
@@ -82,6 +104,14 @@ router.delete('/products/:id', async (req, res) => {
 // UPDATE PRODUCT
 router.put('/products/:id', async (req, res) => {
     try {
+        const product = await Product.findById(req.params.id);
+        if (product && product.image && req.body.image && product.image !== req.body.image) {
+            const oldPublicId = extractPublicId(product.image);
+            if (oldPublicId) {
+                await cloudinary.uploader.destroy(oldPublicId);
+            }
+        }
+
         const updatedProduct = await Product.findByIdAndUpdate(
             req.params.id,
             {
