@@ -58,4 +58,38 @@ router.patch('/:id/status', async (req, res) => {
     }
 });
 
+// Get Order by ID (Customer)
+router.get('/:id', async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id).populate('items.product');
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+        res.json(order);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Update Order Items (Customer)
+router.put('/:id', async (req, res) => {
+    const { items, totalAmount } = req.body;
+    try {
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+        
+        if (order.status !== 'pending') {
+            return res.status(400).json({ message: 'Cannot edit order after it has been processed' });
+        }
+
+        order.items = items;
+        if (totalAmount) {
+            order.totalAmount = totalAmount;
+        }
+        
+        await order.save();
+        res.json(order);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
 module.exports = router;
